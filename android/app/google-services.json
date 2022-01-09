@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "286977169868",
+    "project_id": "video-blackcoffer",
+    "storage_bucket": "video-blackcoffer.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:286977169868:android:cb7ccd8028a9ff1a6e2569",
+        "android_client_info": {
+          "package_name": "com.example.video_blackcoffer"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "286977169868-8cr72dq69n9in41m1pgv61niphd6gtge.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD1k51_ZhKkAXi0RJY1ooRxkP_frSHhRb4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "286977169868-8cr72dq69n9in41m1pgv61niphd6gtge.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
