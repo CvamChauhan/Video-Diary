@@ -13,19 +13,21 @@ import 'package:path/path.dart';
 
 class FeedScreen extends StatefulWidget {
   const FeedScreen({Key? key}) : super(key: key);
-
   @override
   _FeedScreenState createState() => _FeedScreenState();
 }
 
 class _FeedScreenState extends State<FeedScreen> {
   Future<void> _pullRefresh() async {
-    return Future.delayed(const Duration(seconds: 2), () {
-      setState(() {});
+    return Future.delayed(Duration(), () {
+      setState(() {
+        result = [];
+        getData();
+      });
     });
   }
 
-  Future<String?> getLocation() async {
+  Future<String?> _getLocation() async {
     Location location = Location();
     PermissionStatus permission = PermissionStatus.denied;
     while (permission == PermissionStatus.denied) {
@@ -45,7 +47,8 @@ class _FeedScreenState extends State<FeedScreen> {
     }
   }
 
-  void getVideo(context) async {
+  void _getVideo(context) async {
+    String? cityName = await _getLocation();
     XFile? record = await ImagePicker().pickVideo(
         source: ImageSource.camera, maxDuration: const Duration(seconds: 10));
     if (record == null) {
@@ -53,9 +56,14 @@ class _FeedScreenState extends State<FeedScreen> {
     }
     String _path = record.path;
     File video = File(_path);
+
+    await _uploadVideo(context, cityName, _path, video);
+  }
+
+  Future<void> _uploadVideo(
+      context, String? cityName, String _path, File video) async {
     TextEditingController _descriptionController = TextEditingController();
     TextEditingController _titleController = TextEditingController();
-    String? cityName = await getLocation();
     showDialog(
         context: (context),
         builder: (context) {
@@ -69,7 +77,7 @@ class _FeedScreenState extends State<FeedScreen> {
                   onTap: () async {
                     int i = 0;
                     while (cityName == null && i < 5) {
-                      cityName = await getLocation();
+                      cityName = await _getLocation();
                       i++;
                     }
                   },
@@ -91,7 +99,6 @@ class _FeedScreenState extends State<FeedScreen> {
                           'location': cityName ?? 'Unknown',
                           'description': _descriptionController.text,
                         }));
-                    setState(() {});
                     Navigator.pop(context);
                   },
                   child: const Text("Post"))
@@ -105,13 +112,50 @@ class _FeedScreenState extends State<FeedScreen> {
     setState(() {});
   }
 
+  List<Map<String, dynamic>> list = [];
+  List<Map<String, dynamic>> result = [];
+  getData() async {
+    final res = await FirebaseApi.loadData('files/');
+    setState(() {
+      result = res;
+      list = result;
+    });
+  }
+
+  TextEditingController _searchController = TextEditingController();
+  textListner() {
+    List<Map<String, dynamic>> showResult = [];
+    if (_searchController.text != '') {
+      for (var items in list) {
+        if (items['title']
+            .toString()
+            .toLowerCase()
+            .contains(_searchController.text.toLowerCase())) {
+          showResult.add(items);
+        }
+      }
+    } else {
+      showResult = List.from(list);
+    }
+    result = showResult;
+    setState(() {});
+  }
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    getData();
+    _searchController.addListener(textListner);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       floatingActionButton: FloatingActionButton(
         backgroundColor: Colors.black,
         onPressed: () async {
-          getVideo(context);
+          _getVideo(context);
         },
         child: const Icon(
           Icons.video_call,
@@ -130,9 +174,7 @@ class _FeedScreenState extends State<FeedScreen> {
                 Flexible(
                   child: TextField(
                     cursorColor: Colors.black,
-                    onChanged: (value) {
-                      setState(() {});
-                    },
+                    controller: _searchController,
                     decoration: InputDecoration(
                         focusedBorder: const OutlineInputBorder(
                           borderSide: BorderSide(color: Colors.black),
@@ -162,134 +204,135 @@ class _FeedScreenState extends State<FeedScreen> {
                     ))
               ],
             ),
-            FutureBuilder<List<Map<String, dynamic>>>(
-              future: FirebaseApi.loadData('files/'),
-              builder: (context,
-                  AsyncSnapshot<List<Map<String, dynamic>>> snapshot) {
-                switch (snapshot.connectionState) {
-                  case ConnectionState.waiting:
-                    return const Center(
-                        child: CircularProgressIndicator(
-                      color: Colors.white,
-                    ));
-                  default:
-                    if (snapshot.hasError) {
-                      return const Center(
-                        child: Text(
-                          "Some Error Occurred!",
-                          style: TextStyle(color: Colors.white, fontSize: 20),
-                        ),
-                      );
-                    } else {
-                      final files = snapshot.data;
-                      return Expanded(
-                        child: RefreshIndicator(
-                          onRefresh: _pullRefresh,
-                          child: ListView.builder(
-                              itemCount: files!.length,
-                              itemBuilder: (context, index) {
-                                final Map<String, dynamic> file = files[index];
-
-                                final VideoPlayerController fileController =
-                                    VideoPlayerController.network(file['url'])
-                                      ..addListener(() {})
-                                      ..setLooping(true)
-                                      ..initialize();
-                                return Column(
-                                  children: [
-                                    const Divider(
-                                      color: Colors.grey,
-                                      thickness: 1.2,
-                                    ),
-                                    Row(
-                                      children: [
-                                        const SizedBox(width: 10),
-                                        const CircleAvatar(
-                                          radius: 18,
-                                          backgroundImage:
-                                              AssetImage('assets/profile.jpg'),
-                                        ),
-                                        const SizedBox(width: 10),
-                                        Text(
-                                          file['title'],
-                                          style: const TextStyle(
-                                              color: Colors.white),
-                                        ),
-                                        const Expanded(
-                                          child: SizedBox(
-                                            width: double.infinity,
-                                          ),
-                                        ),
-                                        const Icon(
-                                          Icons.location_on,
-                                          color: Colors.white,
-                                          size: 18,
-                                        ),
-                                        const SizedBox(
-                                          width: 5,
-                                        ),
-                                        Text(file['location'],
-                                            style: const TextStyle(
-                                                color: Colors.white)),
-                                        const SizedBox(
-                                          width: 5,
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(
-                                      height: 2,
-                                    ),
-                                    GestureDetector(
-                                      onLongPress: () {},
-                                      onTap: () {
-                                        fileController.value.isPlaying
-                                            ? fileController.pause()
-                                            : fileController.play();
-                                      },
-                                      child: AspectRatio(
-                                          aspectRatio:
-                                              fileController.value.aspectRatio,
-                                          child: VideoPlayer(fileController)),
-                                    ),
-                                    const SizedBox(
-                                      height: 5,
-                                    ),
-                                    Row(
-                                      children: [
-                                        const SizedBox(
-                                          width: 10,
-                                        ),
-                                        const Icon(
-                                          Icons.thumb_up,
-                                          color: Colors.red,
-                                        ),
-                                        const SizedBox(
-                                          width: 10,
-                                        ),
-                                        const Icon(
-                                          Icons.comment,
-                                          color: Colors.grey,
-                                        ),
-                                        const SizedBox(
-                                          width: 10,
-                                        ),
-                                        Text(
-                                          file['description'],
-                                          style: const TextStyle(
-                                              color: Colors.white),
-                                        ),
-                                      ],
-                                    )
-                                  ],
-                                );
-                              }),
-                        ),
-                      );
-                    }
-                }
-              },
-            ),
+            result.isEmpty
+                ? CircularProgressIndicator()
+                : buildListView(result),
           ],
+        ),
+      ),
+    );
+  }
+
+  Expanded buildListView(List<Map<String, dynamic>> files) {
+    return Expanded(
+      child: RefreshIndicator(
+        onRefresh: _pullRefresh,
+        child: ListView.builder(
+          itemCount: files.length,
+          itemBuilder: (context, index) {
+            final Map<String, dynamic> file = files[index];
+
+            final VideoPlayerController fileController =
+                VideoPlayerController.network(file['url'])
+                  ..addListener(() {})
+                  ..setLooping(true)
+                  ..initialize();
+            return Column(
+              children: [
+                const Divider(
+                  color: Colors.grey,
+                  thickness: 1.2,
+                ),
+                Row(
+                  children: [
+                    const SizedBox(width: 10),
+                    const CircleAvatar(
+                      radius: 18,
+                      backgroundImage: AssetImage('assets/profile.jpg'),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      file['title'],
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                    const Expanded(
+                      child: SizedBox(
+                        width: double.infinity,
+                      ),
+                    ),
+                    const Icon(
+                      Icons.location_on,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                    const SizedBox(
+                      width: 5,
+                    ),
+                    Text(file['location'],
+                        style: const TextStyle(color: Colors.white)),
+                    const SizedBox(
+                      width: 5,
+                    ),
+                  ],
+                ),
+                const SizedBox(
+                  height: 2,
+                ),
+                GestureDetector(
+                  onLongPress: () {
+                    showDialog(
+                        context: (context),
+                        builder: (context) {
+                          return AlertDialog(
+                            title: const Text("Do you want to delete?"),
+                            actions: [
+                              TextButton(
+                                onPressed: () {
+                                  _delete(file['path']);
+                                  Navigator.pop(context);
+                                },
+                                child: const Text("Yes"),
+                              ),
+                              TextButton(
+                                onPressed: () async {
+                                  Navigator.pop(context);
+                                },
+                                child: const Text("No"),
+                              )
+                            ],
+                          );
+                        });
+                  },
+                  onTap: () {
+                    fileController.value.isPlaying
+                        ? fileController.pause()
+                        : fileController.play();
+                  },
+                  child: AspectRatio(
+                      aspectRatio: fileController.value.aspectRatio,
+                      child: VideoPlayer(fileController)),
+                ),
+                const SizedBox(
+                  height: 5,
+                ),
+                Row(
+                  children: [
+                    const SizedBox(
+                      width: 10,
+                    ),
+                    const Icon(
+                      Icons.thumb_up,
+                      color: Colors.red,
+                    ),
+                    const SizedBox(
+                      width: 10,
+                    ),
+                    const Icon(
+                      Icons.comment,
+                      color: Colors.grey,
+                    ),
+                    const SizedBox(
+                      width: 10,
+                    ),
+                    Text(
+                      file['description'],
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  ],
+                )
+              ],
+            );
+          },
         ),
       ),
     );

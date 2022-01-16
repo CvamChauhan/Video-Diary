@@ -11,6 +11,7 @@ class FirebaseApi {
       final String fileUrl = await file.getDownloadURL();
       final FullMetadata fileMeta = await file.getMetadata();
       files.add({
+        "path": file.fullPath,
         "url": fileUrl,
         "title": fileMeta.customMetadata?['title'] ?? '',
         "location": fileMeta.customMetadata?['location'] ?? 'Unknown',
